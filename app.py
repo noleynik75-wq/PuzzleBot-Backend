@@ -14,7 +14,9 @@ def root():
 @app.post("/webhook")
 async def webhook(request: Request):
     data = await request.json()
-    user_message = data.get("message", "")
+
+    # Правильное извлечение текста из PuzzleBot
+    user_message = data.get("message", {}).get("text", "")
 
     if not user_message:
         return {"reply": "Сообщение пустое"}
@@ -22,7 +24,7 @@ async def webhook(request: Request):
     # Запрос к OpenAI
     response = client.responses.create(
         model="gpt-4o-mini",
-        input=user_message
+        input=user_message   # <-- обязательно строка
     )
 
     bot_reply = response.output_text
