@@ -1,34 +1,31 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
+from pydantic import BaseModel
 from openai import OpenAI
 import os
 
 app = FastAPI()
-
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-@app.get("/")
-def root():
-    return {"status": "ok", "message": "Backend is running!"}
-
+class Request(BaseModel):
+    input: str
 
 @app.post("/webhook")
-async def webhook(request: Request):
-    data = await request.json()
-
-    # Правильное извлечение текста из PuzzleBot
-    user_message = data.get("message", {}).get("text", "")
-
-    if not user_message:
-        return {"reply": "Сообщение пустое"}
-
-    # Запрос к OpenAI
-    response = client.responses.create(
+async def webhook(req: Request):
+    # Запрос к ChatGPT
+    completion = client.chat.completions.create(
         model="gpt-4o-mini",
-        input=user_message   # <-- обязательно строка
+        messages=[{"role": "user", "content": req.input}]
     )
 
-    bot_reply = response.output_text
+    answer = completion.choices[0].message["content"]
 
+    # Возвращаем в формате PuzzleBot
     return {
-        "reply": bot_reply
+        "commands": [
+            {
+                "type": "set_variable",
+                "name": "gpt_answer",
+                "value": answer
+            }
+        ]
     }
